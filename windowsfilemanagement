@@ -85,3 +85,57 @@ Get-ChildItem -Path "E:\" -Directory | ForEach-Object {
 Write-Host "Finished processing all folders."
 
 ##############################################################################
+
+TEST 
+
+
+# "deletecsv" 폴더 경로 설정
+$csvFolderPath = "C:\Scripts\deletecsv"
+
+# "deletecsv" 폴더 안의 모든 CSV 파일 가져오기
+$csvFiles = Get-ChildItem -Path $csvFolderPath -Filter "*.csv"
+
+# CSV 파일이 없는 경우 처리
+if ($csvFiles.Count -eq 0) {
+    Write-Warning "No CSV files found in '$csvFolderPath'."
+    return  # 스크립트 종료
+}
+
+# 모든 CSV 파일 처리
+foreach ($csvFile in $csvFiles) {
+    Write-Host "Processing CSV file: $($csvFile.FullName)"
+
+    # CSV 파일에서 "파일" 열의 값을 가져옵니다.
+    $fullNames = Import-Csv -Path $csvFile.FullName | Select-Object -ExpandProperty 파일
+
+    # 삭제 대상 리스트 출력
+    Write-Host "삭제 대상 리스트 (CSV: $($csvFile.Name)):"
+    foreach ($fullName in $fullNames) {
+        Write-Host $fullName
+    }
+
+    # 삭제 여부 확인
+    $confirm = Read-Host -Prompt "위 파일들을 삭제하시겠습니까? (y/n)"
+
+    # 삭제 여부에 따라 처리
+    if ($confirm -eq "y") {
+        foreach ($fullName in $fullNames) {
+            if (Test-Path -Path $fullName) {
+                try {
+                    Remove-Item -Path $fullName -Force
+                    Write-Host "Deleted: $fullName"
+                } catch {
+                    Write-Error "Error deleting file: $fullName - $($_.Exception.Message)"
+                }
+            } else {
+                Write-Warning "File not found: $fullName"
+            }
+        }
+    } elseif ($confirm -eq "n") {
+        Write-Host "삭제가 취소되었습니다."
+    } else {
+        Write-Warning "잘못된 입력입니다. y 또는 n을 입력하세요."
+    }
+}
+
+Write-Host "Script completed."
