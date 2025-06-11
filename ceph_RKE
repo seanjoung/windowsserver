@@ -168,6 +168,76 @@ parameters:
 
 ---
 
+# Ceph & RKE2 운영 중 자주 발생하는 다양한 장애/이슈 및 증상별 해결 커멘드
+
+온프레미스 Ceph 및 RKE2 클러스터에서 실무에서 마주칠 수 있는 다양한 장애 유형, 증상, 그리고 즉각적으로 사용할 수 있는 해결 명령어 예시를 정리합니다.
+
+---
+
+## 1. Ceph 운영 중 자주 발생하는 장애/이슈
+
+| 장애/이슈                           | 증상/확인 방법                                       | 원인                              | 해결/조치 커멘드/설명 |
+|--------------------------------------|------------------------------------------------------|-----------------------------------|-----------------------|
+| OSD Down/Out                         | ceph -s, ceph osd tree, ceph health                  | 디스크 불량, 네트워크 장애        | ceph osd out <id><br>교체 후 ceph orch daemon add osd ... |
+| MON Down                             | ceph -s, ceph quorum_status                          | 노드 장애, 프로세스 중단          | ceph orch daemon add mon <HOST> <br> 필요한 경우 ceph orch daemon rm mon.<id> |
+| MGR Down                             | ceph -s                                              | 프로세스 장애/메모리 부족         | ceph orch daemon add mgr <HOST> |
+| PG stuck/inactive/undersized         | ceph health detail, ceph pg dump                     | OSD 장애, 적은 OSD 수             | OSD 복구/추가, ceph pg repair <pg_id> |
+| Full OSD (OSD full)                  | ceph df, ceph -s                                     | 데이터 증가                       | 디스크 추가, ceph osd reweight-by-utilization |
+| 클러스터 네트워크 장애               | ceph health, ping, ifconfig                          | NIC 장애, Switch 문제             | 네트워크 점검, ifdown/ifup, 장비 교체 |
+| 인증 오류 (keyring, caps)            | ceph auth list, ceph auth get <user>                 | keyring 만료, 권한 불일치         | ceph auth update <user> ..., ceph auth import ... |
+| RBD 마운트 오류                      | rbd map, dmesg, ceph log                             | 권한, 네트워크, OSD 장애           | ceph log, rbd status, rbd unmap/map |
+| Ceph CSI 에러 (PVC Pending 등)        | kubectl get pvc, describe pvc, ceph status           | secret/StorageClass 오류, CSI Pod 장애 | Secret/StorageClass 점검, CSI Pod 재시작 |
+| 스냅샷/복제 오류                     | ceph snap ls, ceph status                            | 공간 부족, 권한 문제               | 공간 확보, ceph auth update, 스냅샷 정리 |
+
+---
+
+## 2. RKE2 운영 중 자주 발생하는 장애/이슈
+
+| 장애/이슈                              | 증상/확인 방법                          | 원인                            | 해결/조치 커멘드/설명 |
+|-----------------------------------------|-----------------------------------------|---------------------------------|-----------------------|
+| Node NotReady                           | kubectl get nodes                       | 네트워크 문제, kubelet 장애      | journalctl -u rke2-agent<br>systemctl restart rke2-agent<br>시간 동기화/네트워크 점검 |
+| Pod CrashLoopBackOff                    | kubectl get pods -A, logs, describe     | 환경변수/이미지/리소스 문제      | kubectl logs, kubectl describe pod, 리소스 할당/이미지 확인 |
+| CoreDNS NotReady/서비스 내부 DNS 장애   | kubectl get pods -n kube-system         | CoreDNS 장애, 네트워크 문제      | kubectl rollout restart deployment coredns -n kube-system |
+| CNI 네트워크 장애                       | Pod 간 통신불가, NotReady               | CNI Pod 장애, 네트워크 설정      | kubectl get pods -n kube-system<br>CNI Pod 재시작 |
+| etcd 용량/장애                          | etcd unhealthy, 디스크 Full             | 로그 누적, 백업 미설정           | etcdctl snapshot save, old snapshot 삭제, 디스크 증설 |
+| 인증서 만료/오류                        | API 서버 접속불가                       | cert 만료                        | rke2 cert renew, systemctl restart rke2-server |
+| PersistentVolume(PV) 상태 이상          | kubectl get pv, pvc                     | Ceph/CSI 문제, PVC 바인딩 실패   | PVC/StorageClass/Secret 점검, pod/pvc 재생성 |
+| Kubelet/컨테이너 런타임 장애            | 노드 NotReady, pod scheduling 실패       | 런타임/디스크/메모리 문제        | systemctl restart rke2-agent/containerd |
+| API server 연결 불가                     | kubectl 명령어 실패                     | 방화벽, 인증서, API server 다운   | 포트/방화벽 점검, systemctl restart rke2-server |
+| 노드 drain 불가                         | kubectl drain 실패, evict 불가           | DaemonSet, pod disruption budget | --ignore-daemonsets, PDB 점검 |
+
+---
+
+## 3. 복합 장애 예시와 해결 시퀀스
+
+### [A] Ceph OSD 장애 + PVC ReadOnly
+1. ceph -s, ceph osd tree로 장애 OSD 확인
+2. ceph osd out <id> 처리, 디스크 교체
+3. ceph orch daemon add osd <노드>:<디스크>
+4. PVC 상태 점검, 필요시 pod 재배포
+
+### [B] RKE2 워커노드 NotReady + Pod Pending
+1. kubectl get nodes, describe node로 상태 확인
+2. systemctl restart rke2-agent (노드에서)
+3. 해결 안되면 drain/delete node, 신규 노드 추가
+
+### [C] Ceph CSI 문제로 PVC Pending
+1. kubectl describe pvc, csi pod 로그 확인
+2. ceph status, secret/StorageClass 확인
+3. CSI Pod 재시작: kubectl delete pod -l app=ceph-csi -n kube-system
+
+---
+
+## 4. 체크리스트
+
+- [ ] 장애 발생 시 로그(ceph, kubelet, csi, etcd, pod 등) 우선 확인
+- [ ] 문제 발생 리소스의 상태·이벤트 describe로 확인
+- [ ] 명령 실행 전 장애노트, 변경내역 기록 필수
+- [ ] 모니터링 및 알림 시스템으로 사전 감지 체계 유지
+
+---
+
+
 ####################################################################################
 
 Ceph 운영 시 흔히 발생하는 상황과 이에 대한 명령어 및 스크립트는 다음과 같습니다.
