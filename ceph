@@ -1,0 +1,77 @@
+1. 상태 확인 및 모니터링:
+
+간단한 상태 확인 스크립트(Bash):
+bash
+#!/bin/bash
+HEALTH=$(ceph health)
+if [ "$HEALTH" != 'HEALTH_OK' ]; then
+    echo "Ceph 클러스터 상태가 정상이 아닙니다. $HEALTH"
+    ceph health detail # 추가 정보 제공
+    # 여기에 알림 메커니즘 추가(예: 이메일, Slack 알림)
+else
+    echo "Ceph 클러스터 상태가 정상입니다."
+fi
+OSD 및 사용량 모니터링(Bash):
+bash
+#!/bin/bash
+echo "Ceph 클러스터 상태:"
+ceph status
+echo ""
+echo "OSD 트리:"
+ceph osd tree
+echo ""
+echo "OSD 디스크 사용량:"
+ceph osd df
+echo ""
+echo "풀 통계:"
+ceph df
+2. 유지 관리 모드 스크립트:
+
+유지 관리 시작/종료(Bash):
+bash
+#!/bin/bash
+ACTION=$1 # "start" 또는 "stop"
+if [ "$ACTION" = "start" ]; then
+    echo "Ceph 클러스터 유지 관리 모드를 시작합니다..."
+    ceph osd set noout
+    ceph osd set nobackfill
+    ceph osd set norecover
+    echo "Ceph 유지 관리 플래그(noout, nobackfill, norecover)가 설정되었습니다."
+elif [ "$ACTION" = "stop" ]; then
+    echo "Ceph 클러스터 유지 관리 모드를 종료합니다..."
+    ceph osd unset noout
+    ceph osd unset nobackfill
+    ceph osd unset norecover
+    echo "Ceph 유지 관리 플래그가 해제되었습니다."
+else
+    echo "사용법: $0 [start|stop]"
+    exit 1
+fi
+3. OSD 관리:
+
+점진적 OSD 재가중치 부여(Python/Bash 조합): ceph-gentle-reweight와 같은 도구(일반적으로 커뮤니티 스크립트 저장소에서 찾을 수 있음)는 CRUSH 가중치를 점진적으로 조정하여 OSD를 천천히 비우고 성능 영향을 최소화할 수 있습니다. 이러한 스크립트는 일반적으로 Ceph CLI와 상호 작용하여 OSD 상태를 쿼리하고 가중치를 업데이트합니다.
+
+OSD 추가(개념적 Bash - 단순화):
+
+bash
+#!/bin/bash
+DEVICE="/dev/sdb"
+HOST="ceph-node1"
+echo "$HOST 호스트의 $DEVICE에 OSD를 추가합니다..."
+# 이는 단순화된 표현입니다. 실제 시나리오에서는 cephadm 또는 Rook을 사용하는 것이 좋습니다.
+# cephadm osd create --data $DEVICE # cephadm을 사용한 예
+# 자세한 단계에는 디스크 준비, OSD 배포 및 CRUSH 맵에 추가가 포함됩니다.
+echo "$DEVICE에 대한 OSD 배포가 시작되었습니다."
+4. 풀 관리:
+
+복제된 풀 생성(Bash):
+bash
+#!/bin/bash
+POOL_NAME="my_replicated_pool"
+PG_NUM=128
+REPLICAS=3 # 기본 복제본 수
+echo "$PG_NUM PG 및 $REPLICAS 복제본으로 복제된 풀 $POOL_NAME을 생성합니다."
+ceph osd pool create $POOL_NAME $PG_NUM $PG_NUM replicated
+ceph osd pool set $POOL_NAME size $REPLICAS
+ceph osd pool application enable $POOL_NAME rbd # 예: RBD에 대해 활성화
+echo "풀 $POOL_NAME이 성공적으로 생성되었습니다."
