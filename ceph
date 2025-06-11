@@ -205,3 +205,26 @@ ceph osd pool create $POOL_NAME $PG_NUM $PG_NUM replicated
 ceph osd pool set $POOL_NAME size $REPLICAS
 ceph osd pool application enable $POOL_NAME rbd # 예: RBD에 대해 활성화
 echo "풀 $POOL_NAME이 성공적으로 생성되었습니다."
+
+
+1. 심화된 아키텍처 이해 및 문제 해결:
+
+CRUSH 맵 분석 및 조정: ceph osd crush dump, ceph osd tree, ceph osd crush rule ls, ceph osd crush rule dump 명령어를 사용하여 CRUSH 맵을 분석하고, 필요에 따라 rule을 수정하여 데이터 분산 및 복제 정책을 변경합니다. 예를 들어 특정 장애 도메인에 데이터가 편중되는 것을 방지하기 위해 rule을 조정할 수 있습니다.
+OSD 관리 및 장애 복구: ceph osd ls, ceph osd df, ceph osd perf, ceph osd out, ceph osd in, ceph osd rm, ceph osd reweight 명령어를 사용하여 OSD 상태를 확인하고, 장애 발생 시 OSD를 제거하고 추가하며, 가중치를 조정하여 데이터 복제 및 복구를 관리합니다. OSD의 성능 문제를 파악하고 해결할 수 있어야 합니다.
+MON 및 MGR 관리: ceph mon stat, ceph mon dump, ceph mgr dump, ceph mgr module ls 명령어를 사용하여 MON 및 MGR 상태를 확인하고, quorum 상태를 유지하며, 모듈을 관리합니다. MON 장애 복구 절차를 숙지하고, MGR을 통해 클러스터 상태를 모니터링하고 관리합니다.
+2. 고급 Ceph 기능 활용:
+
+Cache Tiering: SSD와 HDD를 함께 사용하여 성능과 용량을 최적화하는 Cache Tiering을 구성하고 관리합니다. ceph osd tier add, ceph osd tier remove, ceph osd tier cache-mode 명령어를 사용합니다. 캐시 적중률, 지연 시간 등을 모니터링하고 성능을 분석합니다.
+Erasure Coding: 데이터 복제 대신 Erasure Coding을 사용하여 저장 공간 효율성을 높입니다. ceph osd pool set <pool-name> erasure_code_profile <profile-name> 명령어를 사용하여 pool에 Erasure Coding을 적용하고, ceph osd erasure-code-profile set <profile-name> <k=m=...> 명령어를 사용하여 profile을 설정합니다. Erasure Coding의 장단점을 이해하고 적절한 use case에 적용합니다.
+QoS (Quality of Service): RBD 이미지 또는 CephFS에 QoS를 적용하여 특정 애플리케이션의 성능을 보장합니다. rbd QoS set, ceph fs subvolumegroup set 명령어를 사용합니다.
+CephFS Snapshots 및 Quotas: ceph fs subvolume snapshot create, ceph fs subvolume snapshot ls, ceph fs subvolume snapshot rm, ceph fs quota set 명령어를 사용하여 CephFS 스냅샷 및 quota를 관리하고, 데이터 보호 및 용량 관리 정책을 구현합니다.
+3. 성능 튜닝 및 최적화:
+
+OSD 성능 튜닝: ceph osd crush tunables 명령어를 사용하여 CRUSH 맵의 튜닝 가능한 파라미터를 조정하고 데이터 분산을 최적화합니다. OSD의 file system, journal, data 디바이스를 분리하여 성능을 향상시키는 방법을 이해하고 적용합니다.
+MON 및 MGR 성능 튜닝: MON 및 MGR의 설정을 조정하여 성능 병목 현상을 해결합니다. MON의 네트워크 설정, MGR 모듈 설정 등을 최적화합니다.
+네트워크 설정 최적화: MTU, network bonding, multiple network interfaces 등을 설정하여 Ceph 클러스터의 네트워크 성능을 향상시킵니다.
+4. Ceph 클러스터 업그레이드 및 관리:
+
+업그레이드 절차: ceph versions, ceph osd upgrade 명령어를 사용하여 Ceph 클러스터를 업그레이드합니다. 업그레이드 절차를 숙지하고, 롤백 계획을 수립하여 안전하게 업그레이드를 수행합니다.
+Multi-site deployments: 여러 지역에 Ceph 클러스터를 구축하고 관리합니다. RBD mirroring, RGW multisite configuration 등을 사용하여 데이터 복제 및 재해 복구 환경을 구축합니다.
+Capacity planning: 클러스터의 용량 사용량을 예측하고, 필요한 용량을 계획합니다. ceph osd df, ceph df detail 명령어를 사용하여 현재 용량 사용량을 확인하고, 과거 데이터를 분석하여 미래 용량 요구량을 예측합니다.
