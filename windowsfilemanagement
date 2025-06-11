@@ -88,7 +88,6 @@ Write-Host "Finished processing all folders."
 
 TEST 
 
-
 # "deletecsv" 폴더 경로 설정
 $csvFolderPath = "C:\Scripts\deletecsv"
 
@@ -105,11 +104,21 @@ if ($csvFiles.Count -eq 0) {
 foreach ($csvFile in $csvFiles) {
     Write-Host "Processing CSV file: $($csvFile.FullName)"
 
-    # CSV 파일에서 "파일" 열의 값을 가져옵니다.
-    $fullNames = Import-Csv -Path $csvFile.FullName | Select-Object -ExpandProperty 파일
+    # CSV 파일에서 "파일" 또는 "FullName" 열의 값을 가져옵니다.
+    $csvData = Import-Csv -Path $csvFile.FullName
+    if ($csvData[0].PSObject.Properties.Name -contains "파일") {
+        $fullNames = $csvData | Select-Object -ExpandProperty 파일
+        $columnName = "파일"
+    } elseif ($csvData[0].PSObject.Properties.Name -contains "FullName") {
+        $fullNames = $csvData | Select-Object -ExpandProperty FullName
+        $columnName = "FullName"
+    } else {
+        Write-Error "CSV file '$($csvFile.Name)' does not contain '파일' or 'FullName' column."
+        continue  # 다음 CSV 파일 처리
+    }
 
     # 삭제 대상 리스트 출력
-    Write-Host "삭제 대상 리스트 (CSV: $($csvFile.Name)):"
+    Write-Host "삭제 대상 리스트 (CSV: $($csvFile.Name), Column: $columnName):"
     foreach ($fullName in $fullNames) {
         Write-Host $fullName
     }
