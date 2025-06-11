@@ -86,7 +86,12 @@ Write-Host "Finished processing all folders."
 
 ##############################################################################
 
-TEST 
+폴더 안에 삭제 대상 CSV 파일 넣고 삭제
+
+script 3. delete_csv_folder
+#####################################################################################
+
+
 
 # "deletecsv" 폴더 경로 설정
 $csvFolderPath = "C:\Scripts\deletecsv"
