@@ -228,3 +228,6 @@ MON 및 MGR 성능 튜닝: MON 및 MGR의 설정을 조정하여 성능 병목 �
 업그레이드 절차: ceph versions, ceph osd upgrade 명령어를 사용하여 Ceph 클러스터를 업그레이드합니다. 업그레이드 절차를 숙지하고, 롤백 계획을 수립하여 안전하게 업그레이드를 수행합니다.
 Multi-site deployments: 여러 지역에 Ceph 클러스터를 구축하고 관리합니다. RBD mirroring, RGW multisite configuration 등을 사용하여 데이터 복제 및 재해 복구 환경을 구축합니다.
 Capacity planning: 클러스터의 용량 사용량을 예측하고, 필요한 용량을 계획합니다. ceph osd df, ceph df detail 명령어를 사용하여 현재 용량 사용량을 확인하고, 과거 데이터를 분석하여 미래 용량 요구량을 예측합니다.
+
+
+https://tech.osci.kr/ceph-ansible%EB%A1%9C-ceph-%EA%B5%AC%EC%B6%95%ED%95%B4%EB%B3%B4%EA%B8%B0/
