@@ -1,3 +1,133 @@
+Ceph 운영 시 흔히 발생하는 상황과 이에 대한 명령어 및 스크립트는 다음과 같습니다.
+
+I. 클러스터 상태 및 상태 모니터링
+전반적인 클러스터 상태 확인:
+
+ceph status 또는 ceph -s: 클러스터의 상태(예: HEALTH_OK, HEALTH_WARN, HEALTH_ERR), 서비스 상태(모니터, 관리자, OSD, MDS, RGW), 데이터 사용량, 풀 정보 및 PG 상태에 대한 간략한 개요를 제공합니다. 관리자가 가장 먼저 실행하는 명령입니다.
+ceph -w 또는 ceph --watch-warn: 클러스터 활동 및 이벤트를 지속적으로 감시하고 실시간 업데이트를 표시합니다. ceph --watch-warn은 특히 경고 메시지를 필터링합니다.
+ceph health: 클러스터 상태 요약을 표시합니다.
+ceph health detail: 클러스터가 HEALTH_OK가 아닌 경우 자세한 오류 정보를 제공합니다.
+클러스터 사용량 통계 확인:
+
+ceph df: Unix df 명령과 유사하게 총 스토리지 용량, 사용된 공간, 사용 가능한 공간 및 풀 간 사용량 분석을 보여줍니다.
+ceph df detail: 할당량 및 압축 사용량을 포함한 풀 통계에 대한 자세한 정보를 제공합니다.
+데몬 상태 모니터링:
+
+ceph osd stat: OSD가 up(실행 중이고 연결 가능) 및 in(서비스 중)인지 확인합니다.
+ceph mon stat: 선택 에포크 및 쿼럼을 포함한 모니터 데몬의 상태를 표시합니다.
+ceph mgr stat: 관리자 데몬의 상태를 표시합니다.
+ceph mds stat: CephFS 클러스터에서 메타데이터 서버(MDS)의 상태를 표시합니다.
+II. OSD(객체 스토리지 데몬) 관리
+OSD 상태 분석:
+
+ceph osd tree: 모든 OSD, 해당 클래스, 가중치, 상태(업/다운, 인/아웃) 및 CRUSH 맵 내 위치의 계층적 보기를 표시합니다. 실패한 OSD와 해당 물리적 위치를 식별하는 데 중요합니다.
+ceph osd df tree: CRUSH 트리와 함께 OSD 디스크 사용량을 제공합니다.
+ceph osd utilization: OSD에서 사용량 요약(최대 및 최소)을 표시합니다.
+ceph osd perf: 커밋 지연 시간과 같은 OSD 성능 메트릭을 확인합니다.
+OSD 추가/제거:
+
+ceph osd create: 클러스터에 새 OSD를 추가하는 데 사용됩니다.
+ceph osd rm <osd-id>: CRUSH 맵에서 OSD를 제거합니다.
+ceph osd out <osd-id>: 클러스터에서 OSD를 out으로 표시하여 Ceph에 해당 OSD에서 데이터를 마이그레이션하도록 신호를 보냅니다.
+ceph osd in <osd-id>: 클러스터에서 OSD를 in으로 표시합니다.
+ceph osd down <osd-id>: OSD를 down으로 표시합니다.
+OSD 가중치 및 플래그 조정:
+
+ceph osd crush reweight <osd-id> <weight>: 데이터 분포를 제어하기 위해 CRUSH 맵에서 OSD의 가중치를 조정합니다. 클러스터의 균형을 맞추거나 용량이 다른 OSD를 수용하는 데 유용합니다.
+ceph osd set <flag> / ceph osd unset <flag>: 전역 OSD 플래그를 관리합니다. 일반적인 플래그는 다음과 같습니다.
+noout: 유지 관리 중에 자주 사용되며, Ceph가 OSD가 실패할 때 out으로 표시하지 않도록 합니다.
+nobackfill: 백필 작업을 비활성화합니다.
+norecover: 복구 작업을 비활성화합니다.
+norebalance: 재조정 작업을 비활성화합니다.
+pauserd, pausewr: OSD에 대한 읽기 및 쓰기 요청을 일시 중지합니다.
+ceph osd set-full-ratio <ratio>: 클러스터의 전체 비율을 설정합니다(예: 90%는 0.90).
+ceph osd set-nearfull-ratio <ratio>: 클러스터의 거의 전체 비율을 설정합니다(예: 85%는 0.85).
+III. 배치 그룹(PG) 관리
+PG 상태 확인:
+
+ceph pg dump: 모든 배치 그룹에 대한 자세한 통계를 제공합니다.
+ceph pg stat: PG 상태 및 개수를 요약합니다.
+ceph pg dump_stuck <state>: 특정 상태(예: inactive, unclean, stale)에 멈춰 있는 PG를 나열합니다.
+ceph pg map <pg-id>: 특정 PG가 OSD에 매핑되는 방식을 보여줍니다.
+PG 작업 관리:
+
+ceph pg scrub <pg-id>: 데이터 무결성을 확인하기 위해 특정 PG에서 스크럽 작업을 시작합니다.
+ceph pg deep-scrub <pg-id>: 더 철저한 데이터 무결성 검사를 위해 정밀 스크럽을 시작합니다.
+ceph pg force-recovery <pg-id>: 지정된 PG에 대한 복구를 우선시합니다.
+ceph pg force-backfill <pg-id>: 지정된 PG에 대한 백필을 우선시합니다.
+ceph osd pool set <pool-name> pg_autoscale_mode <mode>: 지정된 풀(on, off, warn)에 대한 PG의 자동 크기 조정을 제어합니다.
+IV. 풀 관리
+풀 나열 및 검사:
+
+ceph osd lspools: 구성된 모든 풀을 나열합니다.
+ceph osd pool ls detail: 복제 크기, PG 번호 및 CRUSH 규칙을 포함한 풀에 대한 자세한 정보를 제공합니다.
+ceph osd pool stats <pool-name>: 특정 풀에 대한 사용량 통계를 표시합니다.
+rados df: RADOS 풀 사용량 요약을 제공합니다.
+풀 생성 및 삭제:
+
+ceph osd pool create <pool-name> <pg-num> [<pgp-num>] [replicated|erasure]: 새 풀을 생성합니다.
+ceph osd pool delete <pool-name> [<pool-name> --yes-i-really-really-mean-it]: 풀을 삭제합니다. 참고: 풀을 삭제하려면 mon_allow_pool_delete가 true여야 합니다.
+ceph osd pool rename <old-name> <new-name>: 풀의 이름을 바꿉니다.
+풀 설정 구성:
+
+ceph osd pool set <pool-name> <key> <value>: 복제 크기, min_size 또는 애플리케이션 연결과 같은 다양한 풀 매개변수를 설정합니다.
+ceph osd pool get <pool-name> <key>: 풀의 구성 값을 검색합니다.
+ceph osd pool set-quota <pool-name> max_objects <num> 또는 max_bytes <num>: 풀의 객체 또는 바이트에 대한 할당량을 설정합니다.
+
+V. CRUSH 맵 관리
+CRUSH 맵은 데이터가 OSD, 랙 및 기타 장애 도메인에 분산되는 방식을 정의합니다.
+
+CRUSH 맵 보기:
+
+ceph osd tree: CRUSH 계층 구조를 보여줍니다.
+ceph osd crush dump: 전체 CRUSH 맵을 덤프합니다.
+crushtool -d <컴파일된 맵> -o <디컴파일된 맵.txt>: 편집을 위해 CRUSH 맵 바이너리를 디컴파일합니다.
+CRUSH 맵 요소 수정:
+
+ceph osd crush add-bucket <버킷 이름> <버킷 유형>: CRUSH 맵에 새 버킷(예: 호스트, 랙, 행)을 추가합니다.
+ceph osd crush move <버킷 이름> <유형>=<위치>: CRUSH 계층 구조 내에서 버킷을 이동합니다.
+ceph osd crush set <osd-이름> <가중치> root=<루트> [<버킷 유형>=<버킷 이름> ...]: CRUSH 맵 내에 OSD를 추가하거나 이동합니다.
+ceph osd crush set-device-class <클래스> <osd-이름>: CRUSH 규칙에서 사용할 수 있는 장치 클래스(예: ssd, hdd, nvme)를 OSD에 할당합니다.
+VI. 인증 및 구성
+액세스 및 구성 설정 관리.
+
+인증:
+ceph auth list: 클라이언트 및 데몬에 대한 모든 인증 키를 나열합니다.
+ceph auth print-key <엔티티>: 특정 엔티티(예: client.admin, osd.0)에 대한 키를 인쇄합니다.
+구성:
+ceph config dump: 전체 클러스터 구성 데이터베이스를 덤프합니다.
+ceph config set <누구> <옵션> <값>: 특정 데몬 또는 전체 클러스터에 대한 구성 옵션을 설정합니다.
+ceph config get <누구> <옵션>: 구성 옵션을 검색합니다.
+ceph tell <데몬 유형>.<id> config set <옵션> <값>: 특정 데몬에 대한 런타임 구성을 설정합니다.
+VII. 재해 복구 및 문제 해결
+장애 또는 불일치가 발생한 경우 특정 명령이 복구 및 진단에 도움이 됩니다.
+
+일반적인 문제 해결:
+
+ceph crash ls: 클러스터에 기록된 충돌 이벤트를 나열합니다.
+ceph log last [n]: 클러스터 로그에서 마지막 n줄을 표시합니다.
+ceph -c /경로/ceph.conf -k /경로/키링 <명령>: 기본이 아닌 구성 및 키링 경로를 지정합니다.
+CephFS 복구(고급):
+
+cephfs-journal-tool journal export <backup.bin>: 위험한 작업을 시도하기 전에 백업을 위해 CephFS 저널을 내보냅니다.
+cephfs-journal-tool event recover_dentries summary: 손상된 저널에서 파일 메타데이터를 복구하려고 시도합니다.
+cephfs-data-scan pg_files <경로> <pg-id> [...]: 손실된 데이터 PG의 영향을 받는 파일을 검색합니다.
+ceph fs new <fs_name> <metadata_pool> <data_pool> --force --recover: 모니터 저장소 손실 후 기존 풀에서 CephFS 파일 시스템을 다시 만듭니다.
+느리거나 멈춘 OSD 또는 PG 처리:
+
+이러한 항목을 식별하는 것은 종종 ceph status, ceph osd tree 및 ceph pg dump_stuck으로 시작합니다.
+ceph pg force-recovery 또는 ceph osd reweight와 같은 명령은 문제를 완화하는 데 도움이 될 수 있습니다.
+VIII. 자동화 및 스크립팅
+이러한 명령의 대부분은 자동화를 위해 스크립트에 통합될 수 있습니다.
+
+셸 스크립팅: ceph 명령을 grep, awk, jq(ceph -s -f json 또는 ceph pg dump --format=json과 같은 명령의 JSON 출력용)와 파이프하여 특정 정보를 추출하거나 클러스터 상태에 따라 작업을 자동화할 수 있습니다.
+ceph-volume: 이 도구는 특히 자동화된 설정에서 OSD 배포 및 관리에 사용되지만 종종 cephadm 또는 rook과 같은 오케스트레이터와 통합됩니다.
+rados 명령: 벤치마킹 또는 특정 데이터 작업(rados bench, rados put, rados get)에 유용한 RADOS 객체 저장소와 직접 상호 작용하기 위한 저수준 유틸리티입니다.
+
+
+###################################################################################################################
+
+
 1. 상태 확인 및 모니터링:
 
 간단한 상태 확인 스크립트(Bash):
